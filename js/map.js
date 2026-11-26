@@ -15,6 +15,11 @@ function land() {
   return landCache;
 }
 
+/** Streckenpunkte eines Flugs: Abflug, optionale Wegpunkte (via, [lon,lat]), Ziel */
+export function routeCoords(f) {
+  return [[f._from.lon, f._from.lat], ...(Array.isArray(f.via) ? f.via : []), [f._to.lon, f._to.lat]];
+}
+
 function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 /**
@@ -82,7 +87,7 @@ export function createMap(canvas, opt = {}) {
     for (const pass of [0, 1]) {
       for (const r of routes) {
         ctx.beginPath();
-        path({ type: 'LineString', coordinates: [r.a, r.b] });
+        path({ type: 'LineString', coordinates: r.coords });
         const wdt = 1.2 + 1.8 * Math.sqrt(r.n / maxN);
         ctx.strokeStyle = pass ? (r.future ? c.label : c.route) : c.glow;
         ctx.lineWidth = pass ? wdt : wdt + 4;
@@ -180,8 +185,10 @@ export function createMap(canvas, opt = {}) {
       const rmap = new Map(), amap = new Map(), countries = new Set();
       for (const f of flights) {
         if (!f._from || !f._to) continue;
-        const key = [f.from, f.to].sort().join('-');
-        const r = rmap.get(key) || { a: [f._from.lon, f._from.lat], b: [f._to.lon, f._to.lat], n: 0, future: true };
+        const via = Array.isArray(f.via) && f.via.length ? f.via : null;
+        const fwd = f.from < f.to;
+        const key = [f.from, f.to].sort().join('-') + (via ? JSON.stringify(fwd ? via : [...via].reverse()) : '');
+        const r = rmap.get(key) || { coords: routeCoords(f), n: 0, future: true };
         r.n++; if (!f._future) r.future = false;
         rmap.set(key, r);
         for (const a of [f._from, f._to]) {
@@ -201,11 +208,11 @@ export function createMap(canvas, opt = {}) {
     fit() {
       autoFit = true;
       if (!airports.length || !w) return draw();
-      const pts = airports.map((a) => [a.lon, a.lat]);
+      const pts = [...airports.map((a) => [a.lon, a.lat]), ...routes.flatMap((r) => r.coords.slice(1, -1))];
       const c = d3.geoCentroid({ type: 'MultiPoint', coordinates: pts });
       const spread = Math.max(...pts.map((p) => d3.geoDistance(p, c)));
       if (mode === 'globe') {
-        rotate = [-c[0], -c[1], 0];
+        rotate = [-c[0], Math.max(-60, Math.min(60, -c[1])), 0];
         zoom = clampZoom(spread > 0 ? Math.min(6, 1.25 / Math.sin(Math.min(Math.PI / 2, spread + 0.15)) * 0.8) : 4);
       } else {
         rotate = [-c[0], 0, 0];

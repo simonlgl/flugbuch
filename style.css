@@ -360,7 +360,7 @@ body.sheet-open { overflow: hidden; }
 .detail-route b { font-size: 46px; font-weight: 800; line-height: 1; }
 .detail-route span { color: var(--text-2); font-size: 14px; }
 .detail-route .arc svg { width: 28px; height: 28px; fill: var(--gold); stroke: none; transform: rotate(90deg); }
-.detail-map { display: block; width: calc(100% + 32px); margin: 0 -16px 12px; height: 220px; }
+.detail-map { display: block; width: calc(100% + 32px); margin: 0 -16px 12px; height: 300px; }
 .times { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .times div { background: var(--surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; }
 .times .c { text-align: center; }

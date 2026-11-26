@@ -207,7 +207,7 @@ function openFlight(id) {
     ${f._minEstimated ? '<p class="hint">Flugzeit aus der Distanz geschätzt – für genaue Werte Abflug- und Ankunftszeit eintragen.</p>' : ''}
     <button class="btn danger" id="del">Flug löschen</button>
   `, (root) => {
-    const m = createMap(root.querySelector('.detail-map'), { mode: 'flat', labels: true });
+    const m = createMap(root.querySelector('.detail-map'), { mode: 'globe', labels: true });
     m.setData([f]);
     requestAnimationFrame(() => m.fit());
     root.querySelector('#edit').addEventListener('click', () => openEditor(f));

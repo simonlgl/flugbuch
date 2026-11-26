@@ -1,5 +1,5 @@
 // Service Worker: zuerst das Netz fragen (Updates kommen sofort an), offline auf den Cache zurückfallen.
-const CACHE = 'flugbuch-v3';
+const CACHE = 'flugbuch-v4';
 const SHELL = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/app.js', 'js/data.js', 'js/csv.js', 'js/map.js', 'js/stats.js', 'js/api.js', 'js/pass.js', 'js/util.js',

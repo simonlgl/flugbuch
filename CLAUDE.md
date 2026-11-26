@@ -31,6 +31,8 @@ Home-Bildschirm-App genutzt (Safari → Teilen → „Zum Home-Bildschirm“). K
   (Flugplan schwankt), lieber `durationMin` statt geratener Uhrzeiten.
 - `seatType`: Fenster | Mitte | Gang. `cabin`: Economy | Premium Economy | Business | First.
   `reason`: Urlaub | Geschäftlich | Privat | Sonstiges.
+- `via`: optionale Wegpunkte `[[lon, lat], …]` in Flugrichtung, damit die Karte die echte Routenführung statt
+  des Großkreises zeigt (z. B. MUC–HND südlich um Russland herum). Nur setzen, wenn der Großkreis klar falsch ist.
 - `id` nicht ändern (lokale Änderungen auf Geräten hängen daran). Neue Flüge ohne id eintragen –
   `tools/pruefen.cjs` vergibt sie.
 

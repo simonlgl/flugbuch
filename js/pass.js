@@ -1,7 +1,7 @@
 // „Pass“-Seite: Reisepass-Karte mit Weltkarte, Kennzahlen, Diagramme, Ranglisten, Erfolge, Teilen als Bild.
 import { ref, airport, airlineName } from './data.js';
 import { computeStats, achievements, LONG_HAUL_MIN } from './stats.js';
-import { createMap } from './map.js';
+import { createMap, routeCoords } from './map.js';
 import {
   esc, nf, nf1, nf2, flag, regionName, fmtDate, fmtDur, durHtml, daysHours, fmtKm, cityName, airlineBadge, share, store, toast,
 } from './util.js';
@@ -303,7 +303,7 @@ async function sharePassImage(s, label) {
     const k = [f.from, f.to].sort().join();
     pts.set(f.from, f._from); pts.set(f.to, f._to);
     if (seen.has(k)) continue; seen.add(k);
-    ctx.beginPath(); path({ type: 'LineString', coordinates: [[f._from.lon, f._from.lat], [f._to.lon, f._to.lat]] });
+    ctx.beginPath(); path({ type: 'LineString', coordinates: routeCoords(f) });
     ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3; ctx.stroke();
   }
   for (const a of pts.values()) {

@@ -8,7 +8,7 @@ const airports = require('../data/airports.json');
 const airlines = require('../data/airlines.json');
 const j = JSON.parse(fs.readFileSync(DATEI, 'utf8'));
 const FELDER = ['id', 'date', 'flightNo', 'airline', 'from', 'to', 'dep', 'arr', 'arrDate', 'depActual', 'arrActual',
-  'durationMin', 'aircraft', 'reg', 'seat', 'seatType', 'cabin', 'reason', 'depTerminal', 'depGate', 'pnr', 'note'];
+  'durationMin', 'aircraft', 'reg', 'seat', 'seatType', 'cabin', 'reason', 'depTerminal', 'depGate', 'pnr', 'note', 'via'];
 
 let fehler = 0, warn = 0;
 const F = (m) => { console.log(`FEHLER  ${m}`); fehler++; };
@@ -22,6 +22,8 @@ j.flights = (j.flights || []).map((f, i) => {
   if (!airports[f.from]) F(`${wo}: Abflughafen „${f.from}“ unbekannt`);
   if (!airports[f.to]) F(`${wo}: Zielflughafen „${f.to}“ unbekannt`);
   for (const k of ['dep', 'arr', 'depActual', 'arrActual']) if (f[k] && !/^\d{2}:\d{2}$/.test(f[k])) F(`${wo}: ${k} muss HH:MM sein`);
+  if (f.via !== undefined && !(Array.isArray(f.via) && f.via.every((p) => Array.isArray(p) && p.length === 2
+    && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90))) F(`${wo}: via muss eine Liste von [lon, lat]-Punkten sein`);
   if (f.arrDate && !/^\d{4}-\d{2}-\d{2}$/.test(f.arrDate)) F(`${wo}: arrDate muss JJJJ-MM-TT sein`);
   if (f.flightNo && !/^[A-Z0-9]{2,3}\d{1,4}[A-Z]?$/.test(f.flightNo)) W(`${wo}: Flugnummer „${f.flightNo}“ ungewöhnlich`);
   if (!f.airline && f.flightNo && airlines[f.flightNo.slice(0, 2)]) f.airline = f.flightNo.slice(0, 2);
