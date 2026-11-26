@@ -64,11 +64,12 @@ export function createMap(canvas, opt = {}) {
     const c = {
       ocean: css('--map-ocean'), land: css('--map-land'), visited: css('--map-visited'),
       border: css('--map-border'), grat: css('--map-grat'), route: css('--route'), glow: css('--route-glow'),
-      dot: css('--text'), label: css('--text-2'),
+      dot: css('--map-dot'), label: css('--text-2'), ring: css('--map-ocean'),
+      ...(opt.colors || {}),
     };
 
-    ctx.beginPath(); path(L.outline); ctx.fillStyle = c.ocean; ctx.fill();
-    ctx.beginPath(); path(L.graticule); ctx.strokeStyle = c.grat; ctx.lineWidth = 0.5; ctx.stroke();
+    if (c.ocean !== 'transparent') { ctx.beginPath(); path(L.outline); ctx.fillStyle = c.ocean; ctx.fill(); }
+    if (opt.graticule !== false) { ctx.beginPath(); path(L.graticule); ctx.strokeStyle = c.grat; ctx.lineWidth = 0.5; ctx.stroke(); }
     ctx.beginPath(); for (const f of L.countries) if (!visited.has(f.id)) path(f); ctx.fillStyle = c.land; ctx.fill();
     if (visited.size) {
       ctx.beginPath(); for (const f of L.countries) if (visited.has(f.id)) path(f); ctx.fillStyle = c.visited; ctx.fill();
@@ -100,10 +101,10 @@ export function createMap(canvas, opt = {}) {
       a._xy = p;
       if (!p) continue;
       const r = 2.2 + Math.min(3, Math.sqrt(a.n) * 0.6);
-      ctx.beginPath(); ctx.arc(p[0], p[1], r + 1.5, 0, 2 * Math.PI); ctx.fillStyle = c.ocean; ctx.fill();
+      ctx.beginPath(); ctx.arc(p[0], p[1], r + 1.5, 0, 2 * Math.PI); ctx.fillStyle = c.ring; ctx.fill();
       ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 2 * Math.PI); ctx.fillStyle = c.dot; ctx.fill();
       if (opt.labels) {
-        ctx.fillStyle = c.dot; ctx.fillText(a.code, p[0] + r + 4, p[1] + 4);
+        ctx.fillStyle = c.label; ctx.fillText(a.code, p[0] + r + 4, p[1] + 4);
       }
     }
   }

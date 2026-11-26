@@ -6,35 +6,26 @@ import { parseCsv, rowsToFlights, toCsv, CSV_TEMPLATE } from './csv.js';
 import { computeStats, normalizeAircraft } from './stats.js';
 import { createMap } from './map.js';
 import { apiKey, lookupFlight } from './api.js';
+import { renderPass, destroyPassMaps } from './pass.js';
+import {
+  esc, nf, nf1, flag, fmtDate, fmtDur, fmtKm, cityName, airlineBadge, toast, share, store,
+} from './util.js';
 
 const $app = document.getElementById('app');
 const $sheet = document.getElementById('sheet');
 const $sheetBg = document.getElementById('sheet-bg');
 const ui = {
-  tab: sessionGet('tab') || 'fluege',
+  tab: store('tab') || 'fluege',
   year: 'alle',
   search: '',
-  mapMode: sessionGet('mapMode') || 'globe',
+  sort: store('sort') || 'date',
+  mapMode: store('mapMode') || 'globe',
 };
+if (ui.tab === 'statistik') ui.tab = 'pass';
 let mainMap = null;
 
 // ---------- Hilfsfunktionen ----------
-function sessionGet(k) { try { return localStorage.getItem(`flugbuch.ui.${k}`); } catch { return null; } }
-function sessionSet(k, v) { try { localStorage.setItem(`flugbuch.ui.${k}`, v); } catch {} }
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const nf = new Intl.NumberFormat('de-DE');
-const nf1 = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 });
-const regionName = (() => { try { const d = new Intl.DisplayNames(['de'], { type: 'region' }); return (c) => { try { return d.of(c); } catch { return c; } }; } catch { return (c) => c; } })();
-const flag = (cc) => (cc && /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map((c) => 0x1f1a5 + c.charCodeAt(0))) : '');
-function fmtDate(d, opts = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) {
-  return new Date(`${d}T12:00:00Z`).toLocaleDateString('de-DE', { ...opts, timeZone: 'UTC' });
-}
-function fmtDur(min) {
-  const h = Math.floor(min / 60), m = Math.round(min % 60);
-  return h ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`;
-}
-function fmtHours(min) { return min >= 6000 ? `${nf.format(Math.round(min / 60))} h` : `${nf1.format(min / 60)} h`; }
-function fmtKm(km) { return `${nf.format(Math.round(km))} km`; }
+const sessionSet = store;
 function tzAbbr(utcMs, tz) {
   try {
     return new Intl.DateTimeFormat('de-DE', { timeZone: tz, timeZoneName: 'short' })
@@ -45,32 +36,15 @@ function daysUntil(f) {
   const d = Math.ceil((f._depUtc - Date.now()) / 86400000);
   return d <= 0 ? 'heute' : d === 1 ? 'morgen' : `in ${d} Tagen`;
 }
-export function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600);
-}
-function download(name, text, type = 'text/plain') {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = name; document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-}
-async function share(name, text, type) {
-  const file = new File([text], name, { type });
-  if (navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === 'AbortError') return; }
-  }
-  download(name, text, type);
-}
+function years() { return [...new Set(state.flights.map((f) => f._year))].sort((a, b) => b - a); }
 function filtered() {
   return ui.year === 'alle' ? state.flights : state.flights.filter((f) => String(f._year) === ui.year);
 }
 function yearChips() {
-  const years = [...new Set(state.flights.map((f) => f._year))].sort((a, b) => b - a);
-  if (!years.length) return '';
-  return `<div class="chips" role="tablist">${['alle', ...years].map((y) =>
-    `<button class="chip ${String(y) === ui.year ? 'on' : ''}" data-year="${y}">${y === 'alle' ? 'Alle' : y}</button>`).join('')}</div>`;
+  const ys = years();
+  if (!ys.length) return '';
+  return `<div class="chips" role="tablist">${['alle', ...ys].map((y) =>
+    `<button class="chip ${String(y) === ui.year ? 'on' : ''}" data-year="${y}">${y === 'alle' ? 'Gesamt' : y}</button>`).join('')}</div>`;
 }
 function bindYearChips(root, rerender) {
   root.querySelectorAll('[data-year]').forEach((b) => b.addEventListener('click', () => {
@@ -89,54 +63,88 @@ document.querySelectorAll('#tabbar button').forEach((b) => b.addEventListener('c
 
 function render() {
   if (mainMap && ui.tab !== 'karte') { mainMap.destroy(); mainMap = null; }
+  if (ui.tab !== 'pass') destroyPassMaps();
   document.body.dataset.tab = ui.tab;
-  ({ fluege: renderFlights, karte: renderMap, statistik: renderStats, einstellungen: renderMore })[ui.tab]();
+  ({ fluege: renderFlights, karte: renderMap, pass: renderStats, einstellungen: renderMore })[ui.tab]();
 }
 
 // ---------- Flüge ----------
-function flightCard(f) {
-  const a = f._from, b = f._to;
-  const al = f._airline;
-  return `<button class="flight ${f._future ? 'future' : ''}" data-id="${esc(f.id)}">
-    <div class="f-top">
-      <span>${f._future ? `<span class="badge">${daysUntil(f)}</span>` : ''}${esc(fmtDate(f.date))}</span>
-      <span class="muted">${esc(f.flightNo || '')}${al ? ` · ${esc(airlineName(al))}` : ''}</span>
-    </div>
-    <div class="f-route">
-      <div class="f-ap"><b>${esc(f.from)}</b><small>${esc(a?.city || '?')}</small>${f.dep ? `<time>${esc(f.depActual || f.dep)}</time>` : ''}</div>
-      <div class="f-mid">
-        <span class="f-line"><svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></span>
-        <small>${f._minEstimated ? '~' : ''}${fmtDur(f._min)} · ${fmtKm(f._km)}</small>
-      </div>
-      <div class="f-ap r"><b>${esc(f.to)}</b><small>${esc(b?.city || '?')}</small>${f.arr ? `<time>${esc(f.arrActual || f.arr)}${f._arrDate !== f.date ? '<sup>+1</sup>' : ''}</time>` : ''}</div>
+const PLANE = '<svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>';
+
+function flightRow(f) {
+  return `<button class="frow" data-id="${esc(f.id)}">
+    ${airlineBadge(f._airline)}
+    <span class="frow-main">
+      <small>${esc((f.flightNo || '').replace(/^([A-Z0-9]{2})(\d)/, '$1 $2'))} &nbsp;${esc(f.from)} → ${esc(f.to)}</small>
+      <b>${esc(cityName(f._from))} <span>nach</span> ${esc(cityName(f._to))}</b>
+    </span>
+    <span class="frow-date">${esc(fmtDate(f.date, { day: 'numeric', month: 'short', year: 'numeric' }))}</span>
+  </button>`;
+}
+
+function upcomingCard(f) {
+  const depT = f.depActual || f.dep, arrT = f.arrActual || f.arr;
+  return `<button class="ucard" data-id="${esc(f.id)}">
+    <div class="u-top"><span class="badge">${daysUntil(f)}</span><span>${esc(fmtDate(f.date))}</span><span class="muted">${esc(f.flightNo || '')}</span></div>
+    <div class="u-route">
+      <div><b>${esc(f.from)}</b><small>${esc(cityName(f._from))}</small>${depT ? `<time>${esc(depT)}</time>` : ''}</div>
+      <div class="u-mid"><span class="u-line">${PLANE}</span><small>${f._minEstimated ? '~' : ''}${fmtDur(f._min)}</small></div>
+      <div class="r"><b>${esc(f.to)}</b><small>${esc(cityName(f._to))}</small>${arrT ? `<time>${esc(arrT)}${f._arrDate !== f.date ? '<sup>+1</sup>' : ''}</time>` : ''}</div>
     </div>
   </button>`;
 }
 
+const SORTS = [
+  ['date', 'Datum'], ['from', 'Von'], ['to', 'Nach'], ['airline', 'Airline'], ['aircraft', 'Flugzeug'],
+];
+function groupFlights(list) {
+  const key = {
+    date: (f) => [String(f._year), String(f._year)],
+    from: (f) => [f.from, `${flag(f._from?.country)} ${f.from} · ${cityName(f._from)}`],
+    to: (f) => [f.to, `${flag(f._to?.country)} ${f.to} · ${cityName(f._to)}`],
+    airline: (f) => [f._airline || '?', airlineName(f._airline) || 'Unbekannt'],
+    aircraft: (f) => { const a = normalizeAircraft(f.aircraft) || 'Unbekannt'; return [a, a]; },
+  }[ui.sort];
+  const groups = new Map();
+  for (const f of list) {
+    const [k, title] = key(f);
+    if (!groups.has(k)) groups.set(k, { title, list: [] });
+    groups.get(k).list.push(f);
+  }
+  const arr = [...groups.values()];
+  if (ui.sort !== 'date') arr.sort((a, b) => b.list.length - a.list.length || a.title.localeCompare(b.title));
+  return arr;
+}
+
 function renderFlights() {
   const q = ui.search.trim().toLowerCase();
-  const match = (f) => !q || [f.flightNo, f.from, f.to, f._from?.city, f._to?.city, airlineName(f._airline), f.aircraft, f.reg, f.note, f.date]
+  const match = (f) => !q || [f.flightNo, f.from, f.to, f._from?.city, f._to?.city, cityName(f._from), cityName(f._to), airlineName(f._airline), f.aircraft, f.reg, f.note, f.date]
     .some((x) => x && String(x).toLowerCase().includes(q));
   const list = state.flights.filter(match);
   const upcoming = list.filter((f) => f._future).reverse();
   const past = list.filter((f) => !f._future);
-  const byYear = new Map();
-  for (const f of past) { if (!byYear.has(f._year)) byYear.set(f._year, []); byYear.get(f._year).push(f); }
+  const groups = groupFlights(past);
 
   $app.innerHTML = `
     <header class="top">
       <h1>Flüge</h1>
       <button class="icon-btn accent" id="add" aria-label="Flug hinzufügen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
     </header>
-    ${state.flights.length ? `<input type="search" id="search" class="search" placeholder="Suchen: Stadt, Flugnummer, Flugzeug …" value="${esc(ui.search)}">` : ''}
     ${!state.flights.length ? `<div class="empty">
-        <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+        ${PLANE}
         <h2>Noch keine Flüge</h2>
         <p>Füge einen Flug hinzu, importiere eine CSV-Datei (Mehr → Import) oder lass Claude Code die Flüge in <code>data/flights.json</code> eintragen.</p>
         <button class="btn primary" id="add2">Flug hinzufügen</button>
       </div>` : ''}
-    ${upcoming.length ? `<h3 class="sec">Bevorstehend</h3>${upcoming.map(flightCard).join('')}` : ''}
-    ${[...byYear].map(([y, fs]) => `<h3 class="sec">${y}<span>${fs.length} ${fs.length === 1 ? 'Flug' : 'Flüge'} · ${fmtKm(fs.reduce((s, f) => s + f._km, 0))}</span></h3>${fs.map(flightCard).join('')}`).join('')}
+    ${upcoming.length ? `<h3 class="sec">Bevorstehend</h3>${upcoming.map(upcomingCard).join('')}` : ''}
+    ${state.flights.length ? `
+      <div class="list-head"><h2>Vergangene Flüge</h2></div>
+      <div class="sortbar">
+        <label class="search-pill"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" id="search" placeholder="Suchen" value="${esc(ui.search)}"></label>
+        ${SORTS.map(([k, l]) => `<button class="sort ${ui.sort === k ? 'on' : ''}" data-sort="${k}">${l}${ui.sort === k && k === 'date' ? ' ↓' : ''}</button>`).join('')}
+      </div>` : ''}
+    ${groups.map((g) => `<div class="ghead"><span>${esc(g.title)}</span><span>${g.list.length} ${g.list.length === 1 ? 'FLUG' : 'FLÜGE'}</span></div>
+      <div class="glist">${g.list.map(flightRow).join('')}</div>`).join('')}
     ${q && !list.length ? '<p class="muted center">Keine Treffer.</p>' : ''}
   `;
   $app.querySelector('#add')?.addEventListener('click', () => openEditor());
@@ -148,7 +156,8 @@ function renderFlights() {
     renderFlights();
     const s2 = $app.querySelector('#search'); s2.focus(); s2.setSelectionRange(pos, pos);
   });
-  $app.querySelectorAll('.flight').forEach((el) => el.addEventListener('click', () => openFlight(el.dataset.id)));
+  $app.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => { ui.sort = b.dataset.sort; store('sort', ui.sort); renderFlights(); }));
+  $app.querySelectorAll('.frow, .ucard').forEach((el) => el.addEventListener('click', () => openFlight(el.dataset.id)));
 }
 
 // ---------- Flugdetails ----------
@@ -171,9 +180,9 @@ function openFlight(id) {
       <button class="link" id="edit">Bearbeiten</button>
     </div>
     <div class="detail-route">
-      <div><b>${esc(f.from)}</b><span>${esc(a?.city || '')}</span></div>
+      <div><b>${esc(f.from)}</b><span>${esc(cityName(a))}</span></div>
       <div class="arc"><svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></div>
-      <div class="r"><b>${esc(f.to)}</b><span>${esc(b?.city || '')}</span></div>
+      <div class="r"><b>${esc(f.to)}</b><span>${esc(cityName(b))}</span></div>
     </div>
     <canvas class="detail-map"></canvas>
     <div class="times">
@@ -368,85 +377,13 @@ function renderMap() {
   bindYearChips($app, () => { mainMap?.destroy(); mainMap = null; renderMap(); });
 }
 
-// ---------- Statistik ----------
-function bars(items, { label, value = (x) => x.n, fmt = (v) => nf.format(v), max = 8, onClick } = {}) {
-  const top = items.slice(0, max);
-  if (!top.length) return '<p class="muted">Noch keine Daten.</p>';
-  const m = Math.max(...top.map(value));
-  return `<ol class="bars">${top.map((x, i) => `
-    <li ${onClick ? `data-i="${i}"` : ''}><span class="bl">${label(x)}</span><span class="bv">${fmt(value(x))}</span>
-    <span class="bt"><i style="width:${Math.max(2, (100 * value(x)) / m)}%"></i></span></li>`).join('')}</ol>
-    ${items.length > max ? `<p class="muted small">+ ${items.length - max} weitere</p>` : ''}`;
-}
-function columns(items, label, { valueLabel = (v) => v } = {}) {
-  const m = Math.max(1, ...items.map((x) => x.n));
-  return `<div class="cols">${items.map((x) => `
-    <div class="col" title="${esc(label(x))}: ${x.n}"><span class="cv">${x.n ? valueLabel(x.n) : ''}</span>
-    <span class="cb"><i style="height:${(100 * x.n) / m}%"></i></span><span class="cl">${esc(label(x))}</span></div>`).join('')}</div>`;
-}
-
+// ---------- Pass (Statistik) ----------
 function renderStats() {
-  const list = filtered();
-  const s = computeStats(list);
-  const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
-  const wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  const apLabel = (x) => { const a = airport(x.key); return `<b>${esc(x.key)}</b> ${esc(a?.city || '')}`; };
-  const rec = (title, f) => (f ? `<button class="rec" data-id="${esc(f.id)}"><small>${title}</small><b>${esc(f.from)} → ${esc(f.to)}</b><span>${fmtKm(f._km)} · ${fmtDur(f._min)} · ${esc(fmtDate(f.date, { month: 'short', year: 'numeric' }))}</span></button>` : '');
-  const apRec = (title, a) => (a ? `<div class="rec"><small>${title}</small><b>${flag(a.country)} ${esc(a.code)}</b><span>${esc(a.city)} · ${nf1.format(Math.abs(a.lat))}° ${a.lat >= 0 ? 'N' : 'S'}, ${nf1.format(Math.abs(a.lon))}° ${a.lon >= 0 ? 'O' : 'W'}</span></div>` : '');
-
-  $app.innerHTML = `
-    <header class="top"><h1>Statistik</h1></header>
-    ${yearChips()}
-    ${!s.n ? '<div class="empty"><h2>Noch keine vergangenen Flüge</h2><p>Sobald Flüge eingetragen sind, erscheinen hier Kennzahlen und Diagramme.</p></div>' : `
-    <section class="hero card">
-      <div class="hero-main"><b>${nf.format(s.n)}</b><span>${s.n === 1 ? 'Flug' : 'Flüge'}${ui.year === 'alle' ? '' : ` in ${ui.year}`}</span></div>
-      <div class="hero-grid">
-        <div><b>${nf.format(Math.round(s.km))}</b><span>Kilometer</span></div>
-        <div><b>${fmtHours(s.min)}</b><span>in der Luft${s.estimated ? '*' : ''}</span></div>
-        <div><b>${nf.format(s.airports.length)}</b><span>Flughäfen</span></div>
-        <div><b>${nf.format(s.countries.length)}</b><span>Länder</span></div>
-        <div><b>${nf.format(s.airlines.length)}</b><span>Airlines</span></div>
-        <div><b>${nf.format(s.aircraft.length)}</b><span>Flugzeugtypen</span></div>
-      </div>
-      <div class="fun">
-        <div><span>Um die Erde</span><b>${nf1.format(s.earth)}×</b><span class="meter"><i style="width:${Math.min(100, (s.earth % 1) * 100)}%"></i></span></div>
-        <div><span>Zum Mond</span><b>${nf.format(Math.round(s.moon * 100))} %</b><span class="meter"><i style="width:${Math.min(100, s.moon * 100)}%"></i></span></div>
-        <div><span>Tage in der Luft</span><b>${nf1.format(s.min / 1440)}</b></div>
-        <div><span>Ø pro Flug</span><b>${fmtKm(s.km / s.n)}</b></div>
-      </div>
-      ${s.estimated ? `<p class="hint">* ${s.estimated} Flugzeit${s.estimated === 1 ? '' : 'en'} ohne Uhrzeiten, aus der Distanz geschätzt.</p>` : ''}
-    </section>
-
-    ${ui.year === 'alle' && s.years.length > 1 ? `<section class="card"><h3>Flüge pro Jahr</h3>${columns(s.years, (x) => `’${String(x.key).slice(2)}`)}</section>
-      <section class="card"><h3>Kilometer pro Jahr</h3>${bars([...s.years].reverse(), { label: (x) => `<b>${x.key}</b>`, value: (x) => x.km, fmt: (v) => fmtKm(v), max: 30 })}</section>` : ''}
-    <section class="card"><h3>Flüge pro Monat</h3>${columns(s.months, (x) => months[x.key])}</section>
-
-    <section class="card"><h3>Rekorde</h3><div class="recs">
-      ${rec('Längster Flug', s.longest)}${s.n > 1 ? rec('Kürzester Flug', s.shortest) : ''}
-      ${apRec('Nördlichster Flughafen', s.north)}${apRec('Südlichster Flughafen', s.south)}
-      ${apRec('Östlichster Flughafen', s.east)}${apRec('Westlichster Flughafen', s.west)}
-    </div></section>
-
-    <section class="card"><h3>Flughäfen</h3>${bars(s.airports, { label: apLabel, fmt: (v) => `${v}×` })}</section>
-    <section class="card"><h3>Strecken</h3>${bars(s.routes, { label: (x) => `<b>${esc(x.key)}</b>`, fmt: (v) => `${v}×` })}</section>
-    <section class="card"><h3>Airlines</h3>${bars(s.airlines, { label: (x) => `<b>${esc(x.key)}</b> ${esc(airlineName(x.key))}`, fmt: (v) => `${v}×` })}</section>
-    <section class="card"><h3>Flugzeugtypen</h3>${s.aircraft.length ? bars(s.aircraft, { label: (x) => esc(x.key), fmt: (v) => `${v}×` }) : '<p class="muted">Noch keine Flugzeugtypen eingetragen.</p>'}</section>
-    ${s.regs.length ? `<section class="card"><h3>Einzelne Flugzeuge</h3><p class="muted small">${s.regs.length} verschiedene Kennzeichen${s.regs[0].n > 1 ? ` · am häufigsten ${esc(s.regs[0].key)} (${s.regs[0].n}×)` : ''}</p></section>` : ''}
-
-    <section class="card"><h3>Länder</h3>
-      <div class="countries">${s.countries.map((c) => `<span>${flag(c.key)} ${esc(regionName(c.key))}<small>${c.n}</small></span>`).join('')}</div>
-      <p class="muted small">${s.domestic} Inlandsflüge · ${s.n - s.domestic} international</p>
-    </section>
-
-    <section class="card"><h3>Wochentag</h3>${columns(s.weekdays, (x) => wd[x.key])}</section>
-    ${s.hours.some((h) => h.n) ? `<section class="card"><h3>Abflugzeit</h3>${columns(s.hours, (x) => (x.key % 6 === 0 ? `${x.key}` : ''), { valueLabel: () => '' })}</section>` : ''}
-    ${[['Klasse', s.cabins], ['Sitzplatz', s.seatTypes], ['Reisegrund', s.reasons]].filter(([, l]) => l.length).map(([t, l]) =>
-      `<section class="card"><h3>${t}</h3>${bars(l, { label: (x) => esc(x.key), fmt: (v) => `${v}× · ${Math.round((100 * v) / s.n)} %` })}</section>`).join('')}
-    `}
-    ${s.upcoming ? `<p class="muted center small">${s.upcoming} bevorstehende${s.upcoming === 1 ? 'r' : ''} Flug${s.upcoming === 1 ? '' : 'e'} nicht mitgezählt.</p>` : ''}
-  `;
-  bindYearChips($app, renderStats);
-  $app.querySelectorAll('.rec[data-id]').forEach((b) => b.addEventListener('click', () => openFlight(b.dataset.id)));
+  renderPass($app, {
+    flights: filtered(), year: ui.year, years: years(),
+    onYear: (y) => { ui.year = y; renderStats(); },
+    openFlight,
+  });
 }
 
 // ---------- Mehr: Import / Export / API ----------
@@ -491,6 +428,13 @@ function renderMore() {
     </section>
 
     <section class="card">
+      <h3>Name im Pass</h3>
+      <p class="muted small">Erscheint in der maschinenlesbaren Zeile des Passes (nur auf diesem Gerät gespeichert).</p>
+      <input id="pp-name" placeholder="z. B. Max Mustermann" value="${esc(store('name') || '')}" autocomplete="name">
+      <div class="btns"><button class="btn" id="name-save">Speichern</button></div>
+    </section>
+
+    <section class="card">
       <h3>Über</h3>
       <p class="muted small">Flugbuch · Flughafendaten: OurAirports (Public Domain), Zeitzonen/Airlines: OpenFlights (ODbL), Karte: Natural Earth.</p>
       <button class="btn" id="reload">Neu laden</button>
@@ -523,6 +467,7 @@ function renderMore() {
     try { const r = await lookupFlight('LH400', d); out.textContent = r.length ? `OK – LH400 gestern: ${r[0].from} → ${r[0].to}` : 'Verbindung OK (kein Flug gefunden).'; }
     catch (err) { out.textContent = err.message; }
   });
+  on('#name-save', () => { store('name', $app.querySelector('#pp-name').value.trim()); toast('Gespeichert'); });
   on('#reload', () => location.reload());
 }
 

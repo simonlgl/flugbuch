@@ -12,7 +12,7 @@ Home-Bildschirm-App genutzt (Safari → Teilen → „Zum Home-Bildschirm“). K
   `added`, `overrides` nach id, `deleted` ids). Über Mehr → „Für Claude kopieren“ bekommt der Nutzer einen
   JSON-Block (`neu`, `geaendert`, `geloescht`), den er hier einfügt.
 - `data/airports.json` (`IATA → [Name, Stadt, ISO-Land, lat, lon, Zeitzone, ICAO, Rang]`), `data/airlines.json`
-  (`IATA → [Name, ICAO, Land]`), `data/countries.json` (`ISO → world-atlas-id`) werden von
+  (`IATA → [Name, ICAO, Land]`), `data/countries.json` (`ISO → world-atlas-id`), `data/regions.json` (`ISO → Region` für die Kontinent-Kacheln) werden von
   `tools/build_data.cjs` aus OurAirports/OpenFlights erzeugt – nicht von Hand ändern.
 
 ### Flug-Format (`data/flights.json`)
@@ -27,7 +27,8 @@ Home-Bildschirm-App genutzt (Safari → Teilen → „Zum Home-Bildschirm“). K
 - Zeiten `dep`/`arr` = planmäßige **Ortszeit** am jeweiligen Flughafen (HH:MM). Die Dauer rechnet die App
   über die Zeitzonen aus; Ankunft am Folgetag wird automatisch erkannt. Nur bei Ankunft ≥ 2 Tage später
   oder Datumsgrenze in Gegenrichtung `arrDate` setzen. Optional `depActual`/`arrActual`.
-- Ohne Zeiten: `durationMin` angeben, sonst schätzt die App aus der Distanz.
+- Ohne Zeiten: `durationMin` angeben, sonst schätzt die App aus der Distanz. Wenn nur die Blockzeit sicher ist
+  (Flugplan schwankt), lieber `durationMin` statt geratener Uhrzeiten.
 - `seatType`: Fenster | Mitte | Gang. `cabin`: Economy | Premium Economy | Business | First.
   `reason`: Urlaub | Geschäftlich | Privat | Sonstiges.
 - `id` nicht ändern (lokale Änderungen auf Geräten hängen daran). Neue Flüge ohne id eintragen –
@@ -55,7 +56,8 @@ Format, deutsche Spaltennamen, Flighty- und myFlightradar24-Exporte).
 ## Code
 
 - `js/data.js` Laden/Mischen (Repo + lokal), Zeitzonen-Rechnung, Distanz. `js/csv.js` Import/Export.
-  `js/map.js` Canvas-Karte (d3-geo, Globus/flach). `js/stats.js` Kennzahlen. `js/api.js` optionale
+  `js/map.js` Canvas-Karte (d3-geo, Globus/flach). `js/stats.js` Kennzahlen + Erfolge. `js/pass.js` Pass-Seite
+  (Reisepass-Karte, Diagramme, Ranglisten, Teilen als PNG). `js/util.js` Formatierung, deutsche Städtenamen, Airline-Kreise. `js/api.js` optionale
   AeroDataBox-Abfrage (RapidAPI-Key nur im localStorage des Geräts). `js/app.js` Oberfläche.
 - Bibliotheken liegen in `vendor/` (d3-geo, d3-array, topojson-client, world-atlas 110m) – kein CDN.
 - Nach Änderungen an App-Dateien `CACHE` in `sw.js` hochzählen.

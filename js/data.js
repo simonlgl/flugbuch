@@ -1,18 +1,18 @@
 // Datenhaltung: Referenzdaten (Flughäfen, Airlines), Flüge aus dem Repo + lokale Änderungen,
 // abgeleitete Werte (Distanz, Dauer, UTC-Zeiten).
 
-export const ref = { airports: {}, airlines: {}, countries: {}, airlinesIcao: {}, atlas: null };
+export const ref = { airports: {}, airlines: {}, countries: {}, regions: {}, airlinesIcao: {}, atlas: null };
 export const state = { repo: [], repoVersion: 0, flights: [] };
 
 const LOCAL_KEY = 'flugbuch.lokal.v1';
 const EARTH_KM = 6371.0088;
 
 export async function loadReference() {
-  const [airports, airlines, countries, atlas] = await Promise.all(
-    ['data/airports.json', 'data/airlines.json', 'data/countries.json', 'vendor/countries-110m.json']
+  const [airports, airlines, countries, regions, atlas] = await Promise.all(
+    ['data/airports.json', 'data/airlines.json', 'data/countries.json', 'data/regions.json', 'vendor/countries-110m.json']
       .map((u) => fetch(u).then((r) => r.json())),
   );
-  Object.assign(ref, { airports, airlines, countries, atlas });
+  Object.assign(ref, { airports, airlines, countries, regions, atlas });
   for (const [iata, a] of Object.entries(airlines)) if (a[1]) ref.airlinesIcao[a[1]] = iata;
 }
 

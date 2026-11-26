@@ -116,6 +116,19 @@ Object.assign(airlines, {
   DE: ['Condor', 'CFG', 'Germany'],
 });
 
+// Regionen je Land (für die Kontinent-Übersicht): Kontinent aus OurAirports, verfeinert um Karibik,
+// Mittelamerika und Nahost
+const KARIBIK = 'AG AI AW BB BL BQ BS CU CW DM DO GD GP HT JM KN KY LC MF MQ MS PR SX TC TT VC VG VI'.split(' ');
+const MITTELAMERIKA = 'BZ CR GT HN NI PA SV'.split(' ');
+const NAHOST = 'AE BH CY EG IL IQ IR JO KW LB OM PS QA SA SY TR YE'.split(' ');
+const KONT = { AF: 'AF', AS: 'AS', EU: 'EU', NA: 'NA', OC: 'OC', SA: 'SA', AN: 'AN' };
+const regions = {};
+for (const z of csvZeilen(fs.readFileSync(path.join(roh, 'countries.csv'), 'utf8')).slice(1)) {
+  const iso = z[1];
+  regions[iso] = KARIBIK.includes(iso) ? 'CB' : MITTELAMERIKA.includes(iso) ? 'CA' : NAHOST.includes(iso) ? 'ME' : KONT[z[3]] || 'AN';
+}
+fs.writeFileSync(path.join(ZIEL, 'regions.json'), JSON.stringify(regions));
+
 fs.writeFileSync(path.join(ZIEL, 'airports.json'), JSON.stringify(airports));
 fs.writeFileSync(path.join(ZIEL, 'airlines.json'), JSON.stringify(airlines));
 fs.writeFileSync(path.join(ZIEL, 'countries.json'), JSON.stringify(countries));
