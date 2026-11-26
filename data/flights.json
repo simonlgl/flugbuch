@@ -1,6 +1,35 @@
 {
-  "version": 1,
+  "version": 2,
   "flights": [
-
+    {"id":"2019-06-10-lh2514","date":"2019-06-10","flightNo":"LH2514","airline":"LH","from":"MUC","to":"DUB","seat":"23E","cabin":"Economy"},
+    {"id":"2019-06-20-lh2517","date":"2019-06-20","flightNo":"LH2517","airline":"LH","from":"DUB","to":"MUC","seat":"21B","cabin":"Economy"},
+    {"id":"2023-07-09-fr7382","date":"2023-07-09","flightNo":"FR7382","airline":"FR","from":"STN","to":"CPH","seat":"10A","cabin":"Economy"},
+    {"id":"2023-07-12-w61368","date":"2023-07-12","flightNo":"W61368","airline":"W6","from":"CPH","to":"WAW","cabin":"Economy"},
+    {"id":"2024-07-09-tg925","date":"2024-07-09","flightNo":"TG925","airline":"TG","from":"MUC","to":"BKK","cabin":"Economy"},
+    {"id":"2024-07-10-tg550","date":"2024-07-10","flightNo":"TG550","airline":"TG","from":"BKK","to":"SGN","cabin":"Economy"},
+    {"id":"2024-07-11-vn1382","date":"2024-07-11","flightNo":"VN1382","airline":"VN","from":"SGN","to":"DLI","seat":"29G","cabin":"Economy"},
+    {"id":"2024-08-22-vn1387","date":"2024-08-22","flightNo":"VN1387","airline":"VN","from":"DLI","to":"SGN","seat":"35G","cabin":"Economy"},
+    {"id":"2024-08-26-tg557","date":"2024-08-26","flightNo":"TG557","airline":"TG","from":"SGN","to":"BKK","seat":"43K","cabin":"Economy"},
+    {"id":"2024-08-27-tg924","date":"2024-08-27","flightNo":"TG924","airline":"TG","from":"BKK","to":"MUC","seat":"46K","cabin":"Economy"},
+    {"id":"2024-09-20-fr1588","date":"2024-09-20","flightNo":"FR1588","airline":"FR","from":"VIE","to":"MLA","seat":"15E","cabin":"Economy"},
+    {"id":"2024-09-22-fr1589","date":"2024-09-22","flightNo":"FR1589","airline":"FR","from":"MLA","to":"VIE","seat":"16E","cabin":"Economy"},
+    {"id":"2025-08-12-lh436","date":"2025-08-12","flightNo":"LH436","airline":"LH","from":"MUC","to":"ORD"},
+    {"id":"2025-09-11-nk1531","date":"2025-09-11","flightNo":"NK1531","airline":"NK","from":"ORD","to":"MIA"},
+    {"id":"2025-09-15-nk1530","date":"2025-09-15","flightNo":"NK1530","airline":"NK","from":"MIA","to":"ORD"},
+    {"id":"2025-10-17-as587","date":"2025-10-17","flightNo":"AS587","airline":"AS","from":"ORD","to":"SEA"},
+    {"id":"2025-10-20-as384","date":"2025-10-20","flightNo":"AS384","airline":"AS","from":"SEA","to":"ORD"},
+    {"id":"2025-11-23-am689","date":"2025-11-23","flightNo":"AM689","airline":"AM","from":"ORD","to":"MEX"},
+    {"id":"2025-11-26-vb7350","date":"2025-11-26","flightNo":"VB7350","airline":"VB","from":"NLU","to":"PVR"},
+    {"id":"2025-12-01-vb7005","date":"2025-12-01","flightNo":"VB7005","airline":"VB","from":"PVR","to":"GDL"},
+    {"id":"2025-12-01-vb544","date":"2025-12-01","flightNo":"VB544","airline":"VB","from":"GDL","to":"ORD"},
+    {"id":"2025-12-12-f980","date":"2025-12-12","flightNo":"F980","airline":"F9","from":"ORD","to":"PUJ"},
+    {"id":"2025-12-16-dm1000","date":"2025-12-16","flightNo":"DM1000","airline":"DM","from":"PUJ","to":"SJU"},
+    {"id":"2025-12-20-nk1480","date":"2025-12-20","flightNo":"NK1480","airline":"NK","from":"SJU","to":"ORD"},
+    {"id":"2025-12-23-lh435","date":"2025-12-23","flightNo":"LH435","airline":"LH","from":"ORD","to":"MUC"},
+    {"id":"2026-03-23-lh2124","date":"2026-03-23","flightNo":"LH2124","airline":"LH","from":"MUC","to":"DRS"},
+    {"id":"2026-08-05-a3433","date":"2026-08-05","flightNo":"A3433","airline":"A3","from":"MUC","to":"HER"},
+    {"id":"2026-08-09-de1601","date":"2026-08-09","flightNo":"DE1601","airline":"DE","from":"HER","to":"MUC"},
+    {"id":"2026-11-19-lh714","date":"2026-11-19","flightNo":"LH714","airline":"LH","from":"MUC","to":"HND"},
+    {"id":"2026-11-22-lh715","date":"2026-11-22","flightNo":"LH715","airline":"LH","from":"HND","to":"MUC"}
   ]
 }

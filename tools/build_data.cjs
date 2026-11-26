@@ -109,6 +109,13 @@ for (const alt of ['SR', 'AB', 'BE']) if (airlines[alt]) airlines[alt][3] = 'N';
 const aktiveIcao = new Set(Object.values(airlines).filter((a) => a[3] === 'Y').map((a) => a[1]));
 for (const a of Object.values(airlines)) { if (a[3] !== 'Y' && aktiveIcao.has(a[1])) a[1] = ''; a.pop(); }
 
+// OpenFlights ist bei neueren/umbenannten Airlines veraltet – hier korrigieren bzw. ergänzen
+Object.assign(airlines, {
+  VB: ['Viva Aerobus', 'VIV', 'Mexico'],
+  DM: ['Arajet', 'DWI', 'Dominican Republic'],
+  DE: ['Condor', 'CFG', 'Germany'],
+});
+
 fs.writeFileSync(path.join(ZIEL, 'airports.json'), JSON.stringify(airports));
 fs.writeFileSync(path.join(ZIEL, 'airlines.json'), JSON.stringify(airlines));
 fs.writeFileSync(path.join(ZIEL, 'countries.json'), JSON.stringify(countries));
