@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "flights": [
     {"id":"2019-06-10-lh2514","date":"2019-06-10","flightNo":"LH2514","airline":"LH","from":"MUC","to":"DUB","dep":"08:20","arr":"09:45","seat":"23E","cabin":"Economy"},
     {"id":"2019-06-20-lh2517","date":"2019-06-20","flightNo":"LH2517","airline":"LH","from":"DUB","to":"MUC","dep":"10:40","arr":"14:00","seat":"21B","cabin":"Economy"},
@@ -30,6 +30,6 @@
     {"id":"2026-08-05-a3433","date":"2026-08-05","flightNo":"A3433","airline":"A3","from":"MUC","to":"HER","durationMin":150},
     {"id":"2026-08-09-de1601","date":"2026-08-09","flightNo":"DE1601","airline":"DE","from":"HER","to":"MUC","durationMin":160},
     {"id":"2026-11-19-lh714","date":"2026-11-19","flightNo":"LH714","airline":"LH","from":"MUC","to":"HND","dep":"12:55","arr":"09:15","via":[[26,45],[49,41.5],[68,44.5],[90,43],[112,40.5],[126,37.5]]},
-    {"id":"2026-11-22-lh715","date":"2026-11-22","flightNo":"LH715","airline":"LH","from":"HND","to":"MUC","durationMin":832,"via":[[126,37.5],[112,40.5],[90,43],[68,44.5],[49,41.5],[26,45]]}
+    {"id":"2026-11-22-lh715","date":"2026-11-22","flightNo":"LH715","airline":"LH","from":"HND","to":"MUC","durationMin":832,"via":[[146,40],[160,48],[178,56],[-168,63],[-163,71],[-150,79],[-60,86],[-15,81],[-4,74],[5,65],[9,56]]}
   ]
 }
